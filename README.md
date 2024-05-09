@@ -10,6 +10,8 @@ This project looks to use machine learning to predict binding pockets in protein
 
 ### Running this Program
 
+Before running the program, please make sure to download all of the packages in the `requirements.txt file`.
+
 In order to create and train the machine learning model, please run the `train_model.py` program. On the other hand, if you want to create the dataset (which is required before training the model), then please run the `creating_ligand_dataset.py` program with the required paths in place. 
 
 ### Overview of the Files
