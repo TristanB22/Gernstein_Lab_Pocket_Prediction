@@ -1,6 +1,7 @@
 # Gernstein Lab Pocket Prediction
 
-This project is a collaboration between myself (Tristan Brigham)[mailto:tristan.brigham@yale.edu] and (Alan Ianselli)[alan.ianeselli@yale.edu] in the Gernstein Lab at Yale University.
+This project is a collaboration between myself [Tristan Brigham](mailto:tristan.brigham@yale.edu) and [Alan Ianselli](mailto:alan.ianeselli@yale.edu) in the Gernstein Lab at Yale University.
+
 
 ### Purpose of the Program
 
@@ -17,5 +18,5 @@ Here is a breakdown of all of the files that are in this repository and what the
 
 | File Name                   | Description                                                        |
 |:---------------------------:|:------------------------------------------------------------------:|
-| creating_ligand_dataset.py | This script pulls the data from the pdb file directories and creates the tensors that are going to be used to train the model. |
-| train_model.py | This program is used to actually train the model using the data that is created with the creating_ligand_dataset.py program. |
+| `creating_ligand_dataset.py` | This script pulls the data from the pdb file directories and creates the tensors that are going to be used to train the model. |
+| `train_model.py` | This program is used to actually train the model using the data that is created with the creating_ligand_dataset.py program. |
