@@ -11,6 +11,7 @@
 
 
 # this checks that all of the files have been installed 
+import sys
 import subprocess
 import pkg_resources
 
