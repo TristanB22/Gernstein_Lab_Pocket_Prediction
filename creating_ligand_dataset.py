@@ -1,16 +1,10 @@
 #############################################################
 #															#
 #		Protein-Ligand Pocket Prediction Program			#
-#			Tristan Brigham & Alan Ianselli					#
+#			Tristan Brigham & Alan Ianeselli				#
 #															#
 #############################################################
 
-# import all of the packages that we need for the program
-from repo_imports import *
-
-
-
-# this will be commented out and moved to the repo_imports file once we are done programming
 import os
 import time
 import numpy as np
