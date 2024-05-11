@@ -41,13 +41,13 @@ LEARNING_RATE = 0.001
 NUM_EPOCHS = 1
 
 # the batch size the we are working with
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 
 # whether we should shuffle while training
 SHOULD_SHUFFLE = True
 
 # the number of workers for the dataloader
-NUM_WORKERS = 12
+NUM_WORKERS = 6
 
 
 # this function goes through the directory that we are saving the models to
@@ -134,8 +134,8 @@ def main():
 	if torch.cuda.is_available():
 		device = torch.device("cuda")
 	elif torch.backends.mps.is_available():
-		# device = torch.device("mps")
-		device = torch.device("cpu")
+		device = torch.device("mps")
+		# device = torch.device("cpu")
 	else:
 		device = torch.device("cpu")
 

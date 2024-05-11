@@ -1,7 +1,3 @@
-# this code is used to change the numpy tensors to torch tensors
-# in the refined-set directory that comes from the PDB database
-
-
 import os
 import sys 
 import torch
@@ -203,18 +199,35 @@ def convert_all_features(path, parent_dir=False):
 
 
 
-conversion_path = "../refined-set/"
+testing_path = "../refined-set/1a1e"
 
 # testing the load speeds of the two files
 if __name__ == "__main__":
 
-	for dir_name in tqdm(os.listdir(conversion_path)):
+	# first, we need to ensure the pytorch versions of the files exist for a fair comparison
+	convert_all_features(testing_path)
 
-		try:
-			# first, we need to ensure the pytorch versions of the files exist for a fair comparison
-			convert_all_features(os.path.join(conversion_path, dir_name))
-		except:
-			print(f"Failed for {dir_name}")
-		
+	# measure the time for the numpy-based loading function
+	start_time_numpy = time.time()
+	numpy_features, numpy_target = numpy_open_files_select_molecule_path(testing_path)
+	end_time_numpy = time.time()
 
-	
+	# measure the time for the torch-based loading function
+	start_time_torch = time.time()
+	torch_features, torch_target = torch_open_files_select_molecule_path(testing_path)
+	end_time_torch = time.time()
+
+	# calculate the duration of each function
+	duration_numpy = end_time_numpy - start_time_numpy
+	duration_torch = end_time_torch - start_time_torch
+
+	# print the results
+	print(f"duration using numpy: {duration_numpy:.4f} seconds")
+	print(f"duration using torch: {duration_torch:.4f} seconds")
+
+	# calculate and print the speedup
+	if duration_torch > 0:  # prevent division by zero
+		speedup = duration_numpy / duration_torch
+		print(f"speedup from numpy to torch: {speedup:.2f}x")
+	else:
+		print("no measurable duration for torch-based loading to calculate speedup.")

@@ -4,6 +4,8 @@ __pycache__
 Trained\ Models
 checking_dirs.py
 refined-set/
+*/.DS_Store
+.DS_Store
 
 # Byte-compile / optimized / DLL files
 __pycache__/
