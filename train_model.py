@@ -10,6 +10,35 @@
 # it will save the model to a new directory inside of the "Trained Models" directory once it is done training the model
 
 
+# this checks that all of the files have been installed 
+import subprocess
+import pkg_resources
+
+
+def check_and_install_package(package):
+    try:
+        pkg_resources.require(package)
+        print(f"{package} is already installed.")
+    except pkg_resources.DistributionNotFound:
+        print(f"{package} not found. Installing...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        print(f"{package} has been installed.")
+    except pkg_resources.VersionConflict:
+        installed_package = pkg_resources.get_distribution(package).version
+        print(f"Version conflict for {package}. Installed version: {installed_package}.")
+
+# list of required packages and their importable names
+required_packages = {
+	'torch': 'torch',
+	'numpy': 'numpy',
+	'tqdm': 'tqdm',
+	'torchvision': 'torchvision' 
+}
+
+for package, import_name in required_packages.items():
+	check_and_install_package(package)
+
+
 import os
 import sys 
 import torch
@@ -167,5 +196,4 @@ def main():
 
 
 
-if __name__ == "__main__":
-    main()
+main()
