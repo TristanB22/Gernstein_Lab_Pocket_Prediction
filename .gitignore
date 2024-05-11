@@ -6,6 +6,7 @@ checking_dirs.py
 refined-set/
 */.DS_Store
 .DS_Store
+refset_upload.zip
 
 # Byte-compile / optimized / DLL files
 __pycache__/
