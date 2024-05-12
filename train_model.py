@@ -51,6 +51,10 @@ SHOULD_SHUFFLE = True
 num_cpus = os.cpu_count()
 NUM_WORKERS = num_cpus
 
+# adjust so we don't have too many
+if NUM_WORKERS > 6:
+	NUM_WORKERS = 6
+
 
 # this function goes through the directory that we are saving the models to
 # and looks for the first filename that is available that we can save the models to 
