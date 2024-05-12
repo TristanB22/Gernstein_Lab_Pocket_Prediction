@@ -15,8 +15,11 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 
 # import the model structure and definition
-from Unet_Attention_Model import UNet, open_files, obtain_coordinates, visualize_protein
+from Unet_Attention_Model import UNet, torch_open_files_select_molecule_path, obtain_coordinates, visualize_protein
 
+
+# are we loading in a model that used attention or not?
+USE_ATTN = True
 
 # the model that we are going to load and evaluate
 MODEL_PATH = "./Trained_Models/UNet_0.pth"
@@ -30,12 +33,11 @@ PDB = "3qqs"
 
 # this loads the model from the path that is given to the function
 # model_path: the path to the modle that we want to load
-# model_class: the class and structure of the model that we want to evaluate
 # device: the device that we should put the model on 
-def load_model(model_path, model_class, device='cpu'):
+def load_model(model_path, device='cpu'):
     
 	# create the model
-	loaded_model = model_class()
+	loaded_model = UNet(use_attn_2=USE_ATTN)
 		
 	# load the model in 
 	loaded_model.load_state_dict(torch.load(model_path, map_location=device))
@@ -91,7 +93,7 @@ def main():
 	model = load_model(MODEL_PATH, device=device)
      
 	# load in the molecule that we are going to use to evaluate the model
-	features, target = open_files(os.path.join(MOLECULES_PATH, PDB))
+	features, target = torch_open_files_select_molecule_path(os.path.join(MOLECULES_PATH, PDB))
      
 	# get the features and target tensors
 	dataset = [(features, target)]
