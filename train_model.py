@@ -41,7 +41,7 @@ LEARNING_RATE = 0.001
 NUM_EPOCHS = 1
 
 # the batch size the we are working with
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 
 # whether we should shuffle while training
 SHOULD_SHUFFLE = True
