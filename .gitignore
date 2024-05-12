@@ -7,6 +7,7 @@ refined-set/
 */.DS_Store
 .DS_Store
 refset_upload.zip
+attn_pocket_pred_out.txt
 
 # Byte-compile / optimized / DLL files
 __pycache__/

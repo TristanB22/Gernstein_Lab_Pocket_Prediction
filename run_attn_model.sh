@@ -5,12 +5,18 @@
 #SBATCH --mail-type=ALL
 #SBATCH --partition=gpu
 #SBATCH --gpus=2
-#SBATCH --cpus-per-task=5
+#SBATCH --cpus-per-task=6
 #SBATCH --output=attn_pocket_pred_out.txt
 
-module purge
-module load CUDA
-module load cuDNN
-module load pytorch
+python -m pip install --upgrade pip
 
-source a
+module purge
+module load PyTorch
+module load CUDA/12.1.1
+
+pip install tqdm
+pip install matplotlib
+pip install torchviz
+
+
+python3 train_model.py
