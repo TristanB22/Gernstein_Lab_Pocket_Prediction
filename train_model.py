@@ -55,25 +55,28 @@ NUM_WORKERS = num_cpus
 # this function goes through the directory that we are saving the models to
 # and looks for the first filename that is available that we can save the models to 
 def find_available_filename(directory=SAVE_DIRECTORY, base_filename="UNet_"):
-    
+
+	# make sure that the directory exists
+	os.makedirs(SAVE_DIRECTORY, exist_ok=True)
+
 	# the number of the trained model
-    number = 0
+	number = 0
 
 	# iterate and search for a new available name
-    while True:
+	while True:
 
 		# set the file name
-        filename = f"{base_filename}{number}.pth"
+		filename = f"{base_filename}{number}.pth"
 
 		# create the full path
-        full_path = os.path.join(directory, filename)
+		full_path = os.path.join(directory, filename)
 
 		# return the full path to save to
-        if not os.path.exists(full_path):
-            return full_path
+		if not os.path.exists(full_path):
+			return full_path
 
 		# if not
-        number += 1
+		number += 1
 
 # this function actually trains the UNet model that we have defined with standard pytorch usage
 def train_model(model, dataloader, epochs, optimizer, loss_fn, metric_fn, device="cpu"):
