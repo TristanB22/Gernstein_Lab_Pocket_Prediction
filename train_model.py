@@ -38,13 +38,18 @@ TRAINING_FILEPATHS_FILE = "training_molecules_filepaths.txt"
 LEARNING_RATE = 0.001
 
 # the number of epochs that we are training for 
-NUM_EPOCHS = 1
+NUM_EPOCHS = 40
 
 # the batch size the we are working with
 BATCH_SIZE = 8
 
 # whether we should shuffle while training
 SHOULD_SHUFFLE = True
+
+# whether we should stop the model early if it is not improving
+EARLY_STOPPING = True
+# how many epochs if above is true
+EARLY_STOPPING_EPOCHS = 5
 
 # the number of workers for the dataloader
 # get the number of cpus to get the number of workers
@@ -88,6 +93,10 @@ def train_model(model, dataloader, epochs, optimizer, loss_fn, metric_fn, device
 	# set the model to training mode
 	model.train()
 
+	# keep track of the best loss for early stopping
+	best_loss = float('inf')
+	no_improvement_epochs = 0
+
 	# train for the specified number of epochs
 	for epoch in range(epochs):
 		
@@ -98,11 +107,6 @@ def train_model(model, dataloader, epochs, optimizer, loss_fn, metric_fn, device
 		# process each of the inputs from the dataloader
 		for inputs, targets in tqdm(dataloader, desc="Processing Batch"):
 
-			# if the device that we are training on is mps, then we have to lower the precision of the float pointers
-			# if device == "mps":
-			# 	inputs = inputs.as_type(np.float32)
-			# 	targets = targets.as_type(np.float32)
-			
 			# move everything to the device
 			inputs = inputs.to(device, dtype=torch.float32)
 			targets = targets.to(device, dtype=torch.float32)
@@ -133,6 +137,18 @@ def train_model(model, dataloader, epochs, optimizer, loss_fn, metric_fn, device
 		epoch_metric = running_metric / len(dataloader)
 		
 		print(f"Epoch {epoch+1}, Loss: {epoch_loss:.4f}, Metric: {epoch_metric:.4f}")
+
+		# check for improvement
+		if epoch_loss < best_loss:
+			best_loss = epoch_loss
+			no_improvement_epochs = 0
+		elif EARLY_STOPPING:
+			no_improvement_epochs += 1
+		
+		# early stopping check
+		if no_improvement_epochs >= EARLY_STOPPING_EPOCHS:
+			print(f"Stopping early after {epoch + 1} epochs due to no improvement in loss for {EARLY_STOPPING} consecutive epochs.")
+			break
 
 
 # this is the main function that we are going to call to get the program running off of the bat
