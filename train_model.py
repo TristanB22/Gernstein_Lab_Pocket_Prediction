@@ -47,7 +47,9 @@ BATCH_SIZE = 8
 SHOULD_SHUFFLE = True
 
 # the number of workers for the dataloader
-NUM_WORKERS = 6
+# get the number of cpus to get the number of workers
+num_cpus = os.cpu_count()
+NUM_WORKERS = num_cpus
 
 
 # this function goes through the directory that we are saving the models to
@@ -143,7 +145,7 @@ def main():
 
 	# get the file paths from the filepaths text file
 	filepaths = [line.strip() for line in open(TRAINING_FILEPATHS_FILE).readlines()]
-      
+
 	# initialize a dataset with the file paths
 	dataset = PocketDataset(filepaths)
 	dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=SHOULD_SHUFFLE, num_workers=NUM_WORKERS)
