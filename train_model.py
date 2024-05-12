@@ -105,7 +105,7 @@ def train_model(model, dataloader, epochs, optimizer, loss_fn, metric_fn, device
 		running_metric = 0.0
 		
 		# process each of the inputs from the dataloader
-		for inputs, targets in tqdm(dataloader, desc="Processing Batch"):
+		for inputs, targets in tqdm(dataloader, desc="Processing Epoch"):
 
 			# move everything to the device
 			inputs = inputs.to(device, dtype=torch.float32)
@@ -133,9 +133,11 @@ def train_model(model, dataloader, epochs, optimizer, loss_fn, metric_fn, device
 			metric_value = metric_fn(targets, outputs)
 			running_metric += metric_value.item()
 
+		# keep track of the intra epoch loss
 		epoch_loss = running_loss / len(dataloader)
 		epoch_metric = running_metric / len(dataloader)
 		
+		# print the epoch loss and metric information
 		print(f"Epoch {epoch+1}, Loss: {epoch_loss:.4f}, Metric: {epoch_metric:.4f}")
 
 		# check for improvement
