@@ -1,11 +1,11 @@
 # Gernstein Lab Pocket Prediction
 
-This project is a collaboration between myself [Tristan Brigham](mailto:tristan.brigham@yale.edu) and [Alan Ianseelli](mailto:alan.ianeselli@yale.edu) in the Gernstein Lab at Yale University.
+This project is a collaboration between myself [Tristan Brigham](mailto:tristan.brigham@yale.edu) and [Alan Ianeselli](mailto:alan.ianeselli@yale.edu) in the Gerstein Lab at Yale University.
 
 
 ### Purpose of the Program
 
-This project looks to use machine learning to predict binding pockets in proteins for ligand molecules to bond to. The purpose of the project is to decrease the time that it takes to find these pockets, and will be potentially expanded into programs looking at drug discovery and application. 
+This project looks to use machine learning to predict binding pockets in proteins for ligand molecules to bind to. The purpose of the project is to decrease the time that it takes to find these pockets, and will be potentially expanded into programs looking at drug discovery and application. 
 
 
 ### Running this Program
