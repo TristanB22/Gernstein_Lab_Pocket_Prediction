@@ -27,8 +27,13 @@ Here is a breakdown of all of the files that are in this repository and what the
 
 | File Name                   | Description                                                        |
 |:---------------------------:|:------------------------------------------------------------------:|
-| `creating_ligand_dataset.py` | This script pulls the data from the pdb file directories and creates the tensors that are going to be used to train the model. |
+| `creating_ligand_dataset.py` | This script pulls the data from the pdb file directories and creates the tensors that are going to be used to train the model. Running this script on the original pdb dataset that was created with the PyMol scripts yields a 4x speedup in the training and processing time of all of the input information. |
 | `train_model.py` | This program is used to actually train the model using the data that is created with the creating_ligand_dataset.py program. |
+| `evaluate_model.py` | This program runs the model that is pointed to by the file path in the program and evaluates the performance on a benchmark molecule that we define. |
+| `requirements.txt` | As is standard for python repositories, this contains all of the packages that are required to run the entire program. Please run `pip install -r requirements.txt` in order to install all of the packages found in this file. |
+| `run_attn_model.sh` | This is the script that is submit to the Yale HPC system in order to run the machine learning model training script. Although it is optimized for Yale's high performance computing cluster, it can be modified to fit other systems. |
+| `training_molecules_filepaths.txt` | This file contains all of the protein-ligand combinations that are going to be used to train the machine learning model that we are building. |
 | `UNet_Attention_Model` | This directory contains all of the definitions for the model. It can be imported as a package and trained with the `train_model.py` python program. |
 | `Trained_Models` | This directory contains all of the models that we have finished training and saved. They can be loaded in using the normal loading functions found in the UNet Model definitions. |
-| `Benchmarking` | This directory containsthe code that I use to benchmark new against old methods for loading data and training the model. It is a proving ground for the code. |
+| `Benchmarking` | This directory contains the code that I use to benchmark new against old methods for loading data and training the model. It is a proving ground for the code. |
+| `PyMol_Scripts` | This directory contain the scripts that are used to interface with PyMol in order to create the tensors that are being processed by the model we are training. They are called by other scripts in previous iterations of the program and come from Alan. |
