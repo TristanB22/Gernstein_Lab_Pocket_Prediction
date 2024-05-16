@@ -2,8 +2,11 @@
 __pycache__/*
 __pycache__
 Trained\ Models
+Trained\ Models/*
+Trained_Models
 checking_dirs.py
 refined-set/
+*refined-set*
 */.DS_Store
 .DS_Store
 refset_upload.zip
