@@ -15,6 +15,8 @@ import numpy as np
 
 from torchviz import make_dot
 
+from .fixing_numpy_data import torch_open_files_select_molecule_path
+
 
 # this loads in a tensor from a numpy file and converts it to a pytorch tensor
 # path: the path to the file that has the tensor that we are loading
@@ -178,18 +180,18 @@ def numpy_open_files_select_molecule_path(path, parent_dir=False):
 
 
 
-# this function loads in all of the data that is associated with a molecule
-# and requires that the fixing_numpy_data.py code is called before running
-# this yields a 5x speedup over the function above for loading the tensors in 
-# given the path and returns the features + labels
-# path: the path to the molecule that we are trying to load in
-# parent_dir: the parent directory where the directory of molecules is
-def torch_open_files_select_molecule_path(path, parent_dir=False):
+# # this function loads in all of the data that is associated with a molecule
+# # and requires that the fixing_numpy_data.py code is called before running
+# # this yields a 5x speedup over the function above for loading the tensors in 
+# # given the path and returns the features + labels
+# # path: the path to the molecule that we are trying to load in
+# # parent_dir: the parent directory where the directory of molecules is
+# def torch_open_files_select_molecule_path(path, parent_dir=False):
 	
-	features = torch.load(os.path.join(path, f"{path.replace('../refined-set/', '')}_total_features.pt"))
-	target = torch.load(os.path.join(path, f"{path.replace('../refined-set/', '')}_total_target.pt"))
+# 	features = torch.load(os.path.join(path, f"{path.replace('../refined-set/', '')}_total_features.pt"))
+# 	target = torch.load(os.path.join(path, f"{path.replace('../refined-set/', '')}_total_target.pt"))
 
-	return features, target
+# 	return features, target
 
 
 

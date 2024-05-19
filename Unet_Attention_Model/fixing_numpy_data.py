@@ -16,6 +16,11 @@ from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 import time
 
+
+# the path to the refined set that we are converting
+CONVERSION_PATH = "../refined-set/"
+
+
 # this loads in a tensor from a numpy file and converts it to a pytorch tensor
 # path: the path to the file that has the tensor that we are loading
 def load_numpy(path):
@@ -183,36 +188,45 @@ def numpy_open_files_select_molecule_path(path, parent_dir=False):
 # given the path and returns the features + labels
 # path: the path to the molecule that we are trying to load in
 # parent_dir: the parent directory where the directory of molecules is
-def torch_open_files_select_molecule_path(path, parent_dir=False):
-	
-	features = torch.load(os.path.join(path, f"{path.replace('../refined-set/', '')}_total_features.pt"))
-	target = torch.load(os.path.join(path, f"{path.replace('../refined-set/', '')}_total_target.pt"))
+def torch_open_files_select_molecule_path(path, mol_name=None, parent_dir=False):
+
+	# get the molecule name
+	if mol_name is None:
+		mol_name = path.replace('../', '').replace('refined-set', '').replace('/', '')
+
+	# load in the torch features
+	features = torch.load(os.path.join(path, f"{mol_name}_total_features.pt")).float()
+	target = torch.load(os.path.join(path, f"{mol_name}_total_target.pt")).float()
 
 	return features, target
 
 
 # converting the entire tensor to a single file
-def convert_all_features(path, parent_dir=False):
+def convert_all_features(path, mol_name=None, parent_dir=False):
 
+	# get the molecule name
+	if mol_name is None:
+		mol_name = path.replace('../', '').replace('refined-set/', '')
+	
 	# get the features and the target
 	features, target = numpy_open_files_select_molecule_path(path)
 
 	# now save the features and target to separate files
-	torch.save(features, os.path.join(path, f"{path.replace('../refined-set/', '')}_total_features.pt"))
-	torch.save(target, os.path.join(path, f"{path.replace('../refined-set/', '')}_total_target.pt"))
+	torch.save(features, os.path.join(path, f"{mol_name}_total_features.pt"))
+	torch.save(target, os.path.join(path, f"{mol_name}_total_target.pt"))
 
 
 
-conversion_path = "../refined-set/"
+
 
 # testing the load speeds of the two files
 if __name__ == "__main__":
 
-	for dir_name in tqdm(os.listdir(conversion_path)):
+	for dir_name in tqdm(os.listdir(CONVERSION_PATH)):
 
 		try:
 			# first, we need to ensure the pytorch versions of the files exist for a fair comparison
-			convert_all_features(os.path.join(conversion_path, dir_name))
+			convert_all_features(os.path.join(CONVERSION_PATH, dir_name))
 		except:
 			print(f"Failed for {dir_name}")
 		
