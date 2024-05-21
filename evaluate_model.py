@@ -194,9 +194,13 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 
 				# create the subset with and without the feature
 				subset_with_feature = list(subset) + [feature_index]
-				print(f"subset_with_feature: {subset_with_feature}")
 				subset_without_feature = list(subset)
-				print(f"subset_without_feature: {subset_without_feature}")
+
+				# get the string versions of each of the subsets and see if they exist in the dp table
+				subset_with_feature_str = str(sorted(subset_with_feature))
+				print(subset_with_feature_str)
+				subset_without_feature_str = str(sorted(subset_without_feature))
+				print(subset_without_feature_str)
 
 				# weight = (np.math.factorial(len(subset)) * np.math.factorial(num_features - len(subset) - 1)) / np.math.factorial(num_features)
 
