@@ -347,7 +347,7 @@ def evaluate_model(model, loader, visualize=False, device='cpu'):
 	normalized_mse = total_mse / num_samples
 
 	# return all of the predictions and the normalized mse
-	return predictions, normalized_mse
+	return normalized_mse
 
 
 
@@ -416,7 +416,7 @@ def main():
      
 
 	# get the predicted pocket from the model
-	predictions, normalized_mse, shap_values = evaluate_model_with_shap(model, loader, device=device)
+	normalized_mse, shap_values = evaluate_model_with_shap(model, loader, device=device)
 
 	# print the total loss
 	print(f"MSE Loss: {normalized_mse}")
