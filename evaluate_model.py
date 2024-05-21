@@ -11,6 +11,7 @@ import os
 import shap
 import tqdm
 import torch
+import itertools
 import numpy as np
 import pickle as pkl
 import matplotlib.pyplot as plt
@@ -94,68 +95,138 @@ def mse_wrapper(model, target):
 
 
 
+
+# function to calculate the median of each of the 8 channels that exist in each of the voxels that we are loading
+# this function only works for the current configuration of the data and must be modified if the data structure changes
+# loader: the dataloader that we are going to use to calculate the median values
+def calculate_channel_medians(loader):
+    
+	# initialize an array to store all of the data
+    all_data = []
+
+    # iterate over all batches in the DataLoader
+    for data, _ in loader:
+        all_data.append(data)
+
+    # concatenate all data along the batch dimension
+    all_data = torch.cat(all_data, dim=0)
+
+    # calculate the median for each channel along the spatial dimensions
+    medians = torch.median(all_data.view(-1, 8), dim=0).values
+
+    return medians
+
+
+
 # function for evaluating the model and computing Shapley values for each input feature
 # to get the feature importance
 # model: the model that we are going to evaluate
+# mask_method: the method that we are using to perturb the input features for SHAP
 # loader: the dataloader that we are going to use to evaluate the model
 # device: the computing device ('cpu' or 'cuda')
-def evaluate_model_with_shap(model, loader, device='cpu'):
+def evaluate_model_with_shap(model, loader, mask_method='median', device='cpu'):
 
 	# set the model to evaluation mode
 	model.train()
 
-	# initialize the SHAP explainer using a subset of data 
-	background_data, background_target = next(iter(loader))
-	background_data, background_target = background_data[:100].to(device), background_target[:100].to(device)
+	# get the median value for each of the channels
+	if mask_method == 'median':
+		medians = calculate_channel_medians(loader)
 
-	model_mse = mse_wrapper(model, background_target)
-	explainer = shap.DeepExplainer(model_mse, background_data)
+	# now we are going to compute the MSE delta for ever perturbation of masking
+	# using the SHAP method
+	num_features = len(medians)
 
-	# arrays we are returning
-	predictions = []
-	shap_values = []
-	total_mse = 0
-	num_samples = 0
+	# DP table to keep track of what we have computed MSE delta for already
+	mse_delta_table = {}
 
-	# iterate through the evaluation dataset
-	for data, target in tqdm.tqdm(loader):
+	# shap val table for each of the features
+	shap_val_arr = np.zeros(num_features)
+
+	# calculate SHAP for each of the features with memoization
+	feature_indices = list(range(num_features))
+
+	# compute SHAP for each of the features
+	for feature_index in feature_indices:
+
+		# init a new feature index table
+		t_feature_indices = feature_indices
+		t_feature_indices.remove(feature_index)
+
+		# compute the SHAP value
+		shap_value = 0.0
 		
-		# move the data and target to the right device
-		data, target = data.to(device), target.to(device)
-		predicted_tensor = model(data)
+		# check each size of the subset
+		for subset_size in range(len(feature_indices) + 1):
 
-		# calculate the mean squared error
-		mse = torch.mean((predicted_tensor - target) ** 2)
-		total_mse += mse.item()
-		num_samples += 1
+			# create every combination of the feature indices of the subset size
+			for subset in itertools.combinations(t_feature_indices, subset_size):
 
-		data.requires_grad_(True)
+				# create the subset with and without the feature
+				subset_with_feature = list(subset) + [feature_index]
+				print(f"subset_with_feature: {subset_with_feature}")
+				subset_without_feature = list(subset)
+				print(f"subset_without_feature: {subset_without_feature}")
 
-		# compute SHAP values for this batch
-		try:
-			
-			# debug print
-			print(f"Data shape: {data.shape}")  
-			
-			# debug print
-			print(f"MSE shape: {mse.shape}")    
-			
-			shap_values_batch = explainer.shap_values(data)
-			shap_values.append(shap_values_batch)
+				# weight = (np.math.factorial(len(subset)) * np.math.factorial(num_features - len(subset) - 1)) / np.math.factorial(num_features)
+
+				# contribution = model(X[:, subset_with_feature]) - model(X[:, subset_without_feature])
+				# shap_value += weight * contribution
+
+
+
+	# # initialize the SHAP explainer using a subset of data 
+	# background_data, background_target = next(iter(loader))
+	# background_data, background_target = background_data[:100].to(device), background_target[:100].to(device)
+
+	# model_mse = mse_wrapper(model, background_target)
+	# explainer = shap.DeepExplainer(model_mse, background_data)
+
+	# # arrays we are returning
+	# predictions = []
+	# shap_values = []
+	# total_mse = 0
+	# num_samples = 0
+
+	# # iterate through the evaluation dataset
+	# for data, target in tqdm.tqdm(loader):
 		
-		except Exception as e:
-		
-			print(f"Error computing SHAP values: {e}")
-			continue
+	# 	# move the data and target to the right device
+	# 	data, target = data.to(device), target.to(device)
+	# 	predicted_tensor = model(data)
 
-		# store predictions
-		predictions.append(predicted_tensor)
+	# 	# calculate the mean squared error
+	# 	mse = torch.mean((predicted_tensor - target) ** 2)
+	# 	total_mse += mse.item()
+	# 	num_samples += 1
+
+	# 	data.requires_grad_(True)
+
+	# 	# compute SHAP values for this batch
+	# 	try:
 			
-	# normalize the mse by the number of samples
-	normalized_mse = total_mse / num_samples
+	# 		# debug print
+	# 		print(f"Data shape: {data.shape}")  
+			
+	# 		# debug print
+	# 		print(f"MSE shape: {mse.shape}")    
+			
+	# 		shap_values_batch = explainer.shap_values(data)
+	# 		shap_values.append(shap_values_batch)
+		
+	# 	except Exception as e:
+		
+	# 		print(f"Error computing SHAP values: {e}")
+	# 		continue
 
-	# return all of the predictions, normalized mse, and SHAP values for all samples
-	return predictions, normalized_mse, shap_values
+	# 	# store predictions
+	# 	predictions.append(predicted_tensor)
+			
+	# # normalize the mse by the number of samples
+	# normalized_mse = total_mse / num_samples
+
+	# # return all of the predictions, normalized mse, and SHAP values for all samples
+	# return predictions, normalized_mse, shap_values
 
 
 
@@ -275,6 +346,7 @@ def main():
 		# define a dataloader for the dataset that we are using
 		loader = DataLoader(dataset, batch_size=1, shuffle=False)
      
+
 	# get the predicted pocket from the model
 	predictions, normalized_mse, shap_values = evaluate_model_with_shap(model, loader, device=device)
 
