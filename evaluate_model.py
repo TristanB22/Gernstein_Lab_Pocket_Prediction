@@ -106,7 +106,7 @@ def evaluate_model_with_shap(model, loader, device='cpu'):
 		data.requires_grad_(True)
 
 		# compute SHAP values for this batch
-		shap_values_batch = explainer.shap_values(data)
+		shap_values_batch = explainer.shap_values(mse)
 		shap_values.append(shap_values_batch)
 
 		# store predictions
