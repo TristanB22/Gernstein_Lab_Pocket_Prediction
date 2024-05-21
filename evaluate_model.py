@@ -182,7 +182,7 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 	for feature_index in feature_indices:
 
 		# init a new feature index table
-		t_feature_indices = feature_indices
+		t_feature_indices = list(range(num_features))
 		t_feature_indices.remove(feature_index)
 		print(f"Feature indices: {feature_indices}")
 
