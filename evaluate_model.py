@@ -78,45 +78,47 @@ def load_history(history_path):
 # device: the computing device ('cpu' or 'cuda')
 def evaluate_model_with_shap(model, loader, device='cpu'):
     
-    # set the model to evaluation mode
-    model.eval()
+	# set the model to evaluation mode
+	model.eval()
 
-    # initialize the SHAP explainer using a subset of data (assuming data from loader can fit into memory)
-    background_data = next(iter(loader))[0][:100].to(device)  # use the first 100 examples to estimate background distribution
-    explainer = shap.DeepExplainer(model, background_data)
+	# initialize the SHAP explainer using a subset of data (assuming data from loader can fit into memory)
+	background_data = next(iter(loader))[0][:100].to(device)  # use the first 100 examples to estimate background distribution
+	explainer = shap.DeepExplainer(model, background_data)
 
-    # arrays we are returning
-    predictions = []
-    shap_values = []
-    total_mse = 0
-    num_samples = 0
+	# arrays we are returning
+	predictions = []
+	shap_values = []
+	total_mse = 0
+	num_samples = 0
 
-    with torch.no_grad():
-        
-        # iterate through the evaluation dataset
-        for data, target in tqdm.tqdm(loader):
-            
-            # move the data and target to the right device
-            data, target = data.to(device), target.to(device)
-            predicted_tensor = model(data)
+	with torch.no_grad():
+		
+		# iterate through the evaluation dataset
+		for data, target in tqdm.tqdm(loader):
+			
+			# move the data and target to the right device
+			data, target = data.to(device), target.to(device)
+			predicted_tensor = model(data)
 
-            # calculate the mean squared error
-            mse = torch.mean((predicted_tensor - target) ** 2)
-            total_mse += mse.item()
-            num_samples += 1
+			# calculate the mean squared error
+			mse = torch.mean((predicted_tensor - target) ** 2)
+			total_mse += mse.item()
+			num_samples += 1
 
-            # compute SHAP values for this batch
-            shap_values_batch = explainer.shap_values(data)
-            shap_values.append(shap_values_batch)
+			data.requires_grad_(True)
 
-            # store predictions
-            predictions.append(predicted_tensor)
-            
-    # normalize the mse by the number of samples
-    normalized_mse = total_mse / num_samples
+			# compute SHAP values for this batch
+			shap_values_batch = explainer.shap_values(data)
+			shap_values.append(shap_values_batch)
 
-    # return all of the predictions, normalized mse, and SHAP values for all samples
-    return predictions, normalized_mse, shap_values
+			# store predictions
+			predictions.append(predicted_tensor)
+			
+	# normalize the mse by the number of samples
+	normalized_mse = total_mse / num_samples
+
+	# return all of the predictions, normalized mse, and SHAP values for all samples
+	return predictions, normalized_mse, shap_values
 
 
 
