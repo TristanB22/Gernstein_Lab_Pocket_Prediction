@@ -9,6 +9,7 @@
 # this file is used to evaluate a trained and saved model 
 import os
 import shap
+import tqdm
 import torch
 import numpy as np
 import pickle as pkl
@@ -93,7 +94,7 @@ def evaluate_model_with_shap(model, loader, device='cpu'):
     with torch.no_grad():
         
         # iterate through the evaluation dataset
-        for data, target in loader:
+        for data, target in tqdm(loader):
             
             # move the data and target to the right device
             data, target = data.to(device), target.to(device)
@@ -195,7 +196,22 @@ def main():
 		filepaths = [line.strip() for line in open(EVALUATING_PATH).readlines()]
 
 		# initialize a dataset with the file paths
-		dataset = [torch_open_files_select_molecule_path(path) for path in filepaths]
+		dataset = []
+
+		# iterate through the file paths and load in the data
+		for path in tqdm.tqdm(filepaths):
+
+			try:
+				
+				# get the target and the features
+				features, target = torch_open_files_select_molecule_path(os.path.join(MOLECULES_PATH, path))
+
+				# append the data to the dataset
+				dataset.append((features, target))
+			
+			except:
+				print(f"Failed for {path}")
+				continue
 
 		# define a dataloader for the dataset that we are using
 		loader = DataLoader(dataset, batch_size=1, shuffle=False)
