@@ -192,7 +192,7 @@ def torch_open_files_select_molecule_path(path, mol_name=None, parent_dir=False)
 
 	# get the molecule name
 	if mol_name is None:
-		mol_name = path.replace('../', '').replace('refined-set', '').replace('/', '')
+		mol_name = path.replace('../', '').replace('refined-set', '').replace('/', '').replace('hometjb73palmer_scratch', '')
 
 
 	# create the paths
