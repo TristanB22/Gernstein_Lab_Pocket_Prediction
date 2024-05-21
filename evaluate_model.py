@@ -215,7 +215,7 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 					num_samples = 0
 
 					# get the features that are masked
-					masked_features = [t_val for t_val in range(len(feature_indices)) not in subset_with_feature]
+					masked_features = [t_val for t_val in range(len(feature_indices)) if t_val not in subset_with_feature]
 
 					print(f"masked_features: {masked_features}")
 
