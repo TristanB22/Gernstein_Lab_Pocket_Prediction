@@ -176,12 +176,15 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 	# calculate SHAP for each of the features with memoization
 	feature_indices = list(range(num_features))
 
+	print(f"Feature indices: {feature_indices}")
+
 	# compute SHAP for each of the features
 	for feature_index in feature_indices:
 
 		# init a new feature index table
 		t_feature_indices = feature_indices
 		t_feature_indices.remove(feature_index)
+		print(f"Feature indices: {feature_indices}")
 
 		# compute the SHAP value
 		shap_value = 0.0
