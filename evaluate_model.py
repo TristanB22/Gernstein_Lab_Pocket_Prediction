@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 
 # import the model structure and definition
-from Unet_Attention_Model import UNet, torch_open_files_select_molecule_path, obtain_coordinates, visualize_protein
+from Unet_Attention_Model import UNet, torch_open_files_select_molecule_path, obtain_coordinates, visualize_protein, count_gpus
 
 
 # are we loading in a model that used attention or not?
@@ -94,7 +94,7 @@ def evaluate_model_with_shap(model, loader, device='cpu'):
     with torch.no_grad():
         
         # iterate through the evaluation dataset
-        for data, target in tqdm(loader):
+        for data, target in tqdm.tqdm(loader):
             
             # move the data and target to the right device
             data, target = data.to(device), target.to(device)
@@ -177,12 +177,18 @@ def main():
 	# gettign the device that we should evaluate on
 	if torch.cuda.is_available():
 		device = torch.device("cuda")
+		
+		# call the function and print the number of GPUs
+		num_gpus = count_gpus()
+		print(f"Number of GPUs being used: {num_gpus}")
+
 	elif torch.backends.mps.is_available():
 		device = torch.device("mps")
 	else:
 		device = torch.device("cpu")
 
 	print(f"Training model on {device}")
+
      
 
 	# pull the model
