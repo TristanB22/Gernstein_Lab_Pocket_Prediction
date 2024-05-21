@@ -117,6 +117,32 @@ def calculate_channel_medians(loader):
     return medians
 
 
+# function to calculate the mean of each of the 8 channels that exist in each of the voxels that we are loading
+# this function only works for the current configuration of the data and must be modified if the data structure changes
+# loader: the dataloader that we are going to use to calculate the median values
+def calculate_channel_means(loader):
+
+	# init a running sum
+	running_sum = torch.zeros(8)
+	count = 0
+
+	# iterate over all batches in the DataLoader
+	for data, _ in loader:
+		
+		# reshape the data to sum over the channels
+		batch_size = data.shape[0]
+		batch_sum = data.view(-1, 8).sum(dim=0)
+		
+		# update running sum and count
+		running_sum += batch_sum
+		count += batch_size * 32 * 32 * 32
+
+	# calculate the mean for each channel
+	means = running_sum / count
+
+	return means
+
+
 
 # function for evaluating the model and computing Shapley values for each input feature
 # to get the feature importance
@@ -124,18 +150,22 @@ def calculate_channel_medians(loader):
 # mask_method: the method that we are using to perturb the input features for SHAP
 # loader: the dataloader that we are going to use to evaluate the model
 # device: the computing device ('cpu' or 'cuda')
-def evaluate_model_with_shap(model, loader, mask_method='median', device='cpu'):
+def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 
 	# set the model to evaluation mode
 	model.train()
 
 	# get the median value for each of the channels
 	if mask_method == 'median':
-		medians = calculate_channel_medians(loader)
+		mask_values = calculate_channel_medians(loader)
+	elif mask_method == 'mean':
+		mask_values = calculate_channel_means(loader)
+	else:
+		raise ValueError("Invalid mask method")
 
 	# now we are going to compute the MSE delta for ever perturbation of masking
 	# using the SHAP method
-	num_features = len(medians)
+	num_features = len(mask_values)
 
 	# DP table to keep track of what we have computed MSE delta for already
 	mse_delta_table = {}
