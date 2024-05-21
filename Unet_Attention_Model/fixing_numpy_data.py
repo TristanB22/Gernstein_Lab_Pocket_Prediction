@@ -199,6 +199,7 @@ def torch_open_files_select_molecule_path(path, mol_name=None, parent_dir=False)
 	features_path = os.path.join(path, f"{mol_name}_total_features.pt")
 	target_path = os.path.join(path, f"{mol_name}_total_target.pt")
 
+	print(f"mol_name: {mol_name}")
 	print(f"features_path: {features_path}")
 	print(f"target_path: {target_path}")
 
