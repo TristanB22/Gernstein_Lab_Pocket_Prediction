@@ -209,8 +209,9 @@ def main():
 				# append the data to the dataset
 				dataset.append((features, target))
 			
-			except:
+			except Exception as e:
 				print(f"Failed for {path}")
+				print(e)
 				continue
 
 		# define a dataloader for the dataset that we are using

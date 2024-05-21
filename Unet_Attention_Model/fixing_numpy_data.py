@@ -194,9 +194,17 @@ def torch_open_files_select_molecule_path(path, mol_name=None, parent_dir=False)
 	if mol_name is None:
 		mol_name = path.replace('../', '').replace('refined-set', '').replace('/', '')
 
+
+	# create the paths
+	features_path = os.path.join(path, f"{mol_name}_total_features.pt")
+	target_path = os.path.join(path, f"{mol_name}_total_target.pt")
+
+	print(f"features_path: {features_path}")
+	print(f"target_path: {target_path}")
+
 	# load in the torch features
-	features = torch.load(os.path.join(path, f"{mol_name}_total_features.pt")).float()
-	target = torch.load(os.path.join(path, f"{mol_name}_total_target.pt")).float()
+	features = torch.load(features_path).float()
+	target = torch.load(target_path).float()
 
 	return features, target
 
