@@ -187,7 +187,7 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 		shap_value = 0.0
 		
 		# check each size of the subset
-		for subset_size in range(len(feature_indices) + 1):
+		for subset_size in range(len(feature_indices)):
 
 			# create every combination of the feature indices of the subset size
 			for subset in itertools.combinations(t_feature_indices, subset_size):
@@ -198,9 +198,77 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 
 				# get the string versions of each of the subsets and see if they exist in the dp table
 				subset_with_feature_str = str(sorted(subset_with_feature))
-				print(subset_with_feature_str)
 				subset_without_feature_str = str(sorted(subset_without_feature))
-				print(subset_without_feature_str)
+
+				# if we have already computed the MSE delta for this subset, use that
+				if subset_with_feature_str in mse_delta_table:
+
+					# get the MSE delta for the subset
+					w_feat_delta = mse_delta_table[subset_with_feature_str]
+
+				else:
+
+					# initialize the MSE delta for the subset
+					total_mse = 0
+					num_samples = 0
+
+					# get the features that are masked
+					masked_features = [t_val for t_val in range(len(feature_indices)) not in subset_with_feature]
+
+					# get the mse across the entire dataset
+					for data, target in tqdm.tqdm(loader):
+		
+						# move the data and target to the right device
+						data, target = data.to(device), target.to(device)
+						
+						# mask the data
+						for mask_index in masked_features:
+							data[:, :, :, :, mask_index] = mask_values[feature_index]
+
+						# get the predicted tensor
+						predicted_tensor = model(data)
+
+						# calculate the mean squared error
+						mse = torch.mean((predicted_tensor - target) ** 2)
+						total_mse += mse.item()
+						num_samples += 1
+
+
+					# compute the MSE delta across the dataset for the subset with the feature
+					w_feat_delta = total_mse / num_samples
+
+					# store the MSE delta in the table
+					mse_delta_table[subset_with_feature_str] = w_feat_delta
+
+				
+				# now compute the MSE delta across the dataset for the subset without the feature
+				if subset_without_feature_str in mse_delta_table:
+
+					# get the MSE delta for the subset
+					wo_feat_delta = mse_delta_table[subset_without_feature_str]
+
+				else:
+
+					# get the data and target
+					data, target = next(iter(loader))
+					data, target = data.to(device), target.to(device)
+
+					# mask the data
+					masked_data = data.clone()
+					masked_data[:, feature_index] = mask_values[feature_index]
+
+					# get the model predictions
+					prediction = model(data)
+					prediction_masked = model(masked_data)
+
+					# calculate the MSE delta
+					wo_feat_delta = torch.mean((prediction - prediction_masked) ** 2)
+
+					# store the MSE delta in the table
+					mse_delta_table[subset_without_feature_str] = wo_feat_delta
+					
+
+
 
 				# weight = (np.math.factorial(len(subset)) * np.math.factorial(num_features - len(subset) - 1)) / np.math.factorial(num_features)
 
