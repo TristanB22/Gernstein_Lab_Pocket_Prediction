@@ -69,106 +69,95 @@ def load_history(history_path):
     return history_data
 
 
+# define a function that returns a wrapper for the model to compute the mse
+# this will be passed to the SHAP explainer and called by SHAP
+# model: the model that we are going to use to compute the mse
+# target: the target that we are going to use to compute the mse
+def mse_wrapper(model, target):
 
-
-# # function for evaluating the model and computing Shapley values for each input feature
-# # to get the feature importance
-# # model: the model that we are going to evaluate
-# # loader: the dataloader that we are going to use to evaluate the model
-# # device: the computing device ('cpu' or 'cuda')
-# def evaluate_model_with_shap(model, loader, device='cpu'):
-
-# 	# set the model to evaluation mode
-# 	model.train()
-
-# 	# initialize the SHAP explainer using a subset of data (assuming data from loader can fit into memory)
-# 	background_data = next(iter(loader))[0][:100].to(device) 
-# 	explainer = shap.DeepExplainer(model, background_data)
-
-# 	# arrays we are returning
-# 	predictions = []
-# 	shap_values = []
-# 	total_mse = 0
-# 	num_samples = 0
-
-# 	# iterate through the evaluation dataset
-# 	for data, target in tqdm.tqdm(loader):
+	# define the wrapper that we are returning
+	def model_with_mse(data):
 		
-# 		# move the data and target to the right device
-# 		data, target = data.to(device), target.to(device)
-# 		predicted_tensor = model(data)
+		# get the model prediction
+		pred = model(data)
 
-# 		# calculate the mean squared error
-# 		mse = torch.mean((predicted_tensor - target) ** 2)
-# 		total_mse += mse.item()
-# 		num_samples += 1
+		# get the mse
+		mse = torch.mean((pred - target) ** 2, dim=[1, 2, 3, 4])  
 
-# 		data.requires_grad_(True)
+		print(f"mse: {mse}")
 
-# 		# compute SHAP values for this batch
-# 		try:
-			
-# 			# debug print
-# 			print(f"Data shape: {data.shape}")  
-			
-# 			# debug print
-# 			print(f"MSE shape: {mse.shape}")    
-			
-# 			shap_values_batch = explainer.shap_values(data)
-# 			shap_values.append(shap_values_batch)
-		
-# 		except Exception as e:
-		
-# 			print(f"Error computing SHAP values: {e}")
-# 			continue
-
-# 		# store predictions
-# 		predictions.append(predicted_tensor)
-			
-# 	# normalize the mse by the number of samples
-# 	normalized_mse = total_mse / num_samples
-
-# 	# return all of the predictions, normalized mse, and SHAP values for all samples
-# 	return predictions, normalized_mse, shap_values
+		# return the mse
+		return mse
+	
+	# return the wrapper for mse
+	return model_with_mse
 
 
 
+# function for evaluating the model and computing Shapley values for each input feature
+# to get the feature importance
+# model: the model that we are going to evaluate
+# loader: the dataloader that we are going to use to evaluate the model
+# device: the computing device ('cpu' or 'cuda')
 def evaluate_model_with_shap(model, loader, device='cpu'):
-	model.eval()  # set the model to evaluation mode
 
-	background_data = next(iter(loader))[0][:100].to(device)  # use the first 100 examples to estimate background distribution
-	explainer = shap.DeepExplainer(model, background_data)
+	# set the model to evaluation mode
+	model.train()
 
+	# initialize the SHAP explainer using a subset of data 
+	background_data, background_target = next(iter(loader))
+	background_data, background_target = background_data[:100].to(device), background_target[:100].to(device)
+
+	model_mse = mse_wrapper(model, background_target)
+	explainer = shap.DeepExplainer(model_mse, background_data)
+
+	# arrays we are returning
 	predictions = []
 	shap_values = []
 	total_mse = 0
 	num_samples = 0
 
+	# iterate through the evaluation dataset
 	for data, target in tqdm.tqdm(loader):
+		
+		# move the data and target to the right device
 		data, target = data.to(device), target.to(device)
 		predicted_tensor = model(data)
 
+		# calculate the mean squared error
 		mse = torch.mean((predicted_tensor - target) ** 2)
 		total_mse += mse.item()
 		num_samples += 1
 
 		data.requires_grad_(True)
 
+		# compute SHAP values for this batch
 		try:
-			print(f"Data shape: {data.shape}")  # debug print
-			print(f"MSE shape: {mse.shape}")    # debug print
-
-			# assuming the data is shaped correctly for the model
+			
+			# debug print
+			print(f"Data shape: {data.shape}")  
+			
+			# debug print
+			print(f"MSE shape: {mse.shape}")    
+			
 			shap_values_batch = explainer.shap_values(data)
 			shap_values.append(shap_values_batch)
+		
 		except Exception as e:
+		
 			print(f"Error computing SHAP values: {e}")
 			continue
 
+		# store predictions
 		predictions.append(predicted_tensor)
-
+			
+	# normalize the mse by the number of samples
 	normalized_mse = total_mse / num_samples
+
+	# return all of the predictions, normalized mse, and SHAP values for all samples
 	return predictions, normalized_mse, shap_values
+
+
 
 
 
