@@ -79,7 +79,7 @@ def load_history(history_path):
 def evaluate_model_with_shap(model, loader, device='cpu'):
     
 	# set the model to evaluation mode
-	model.eval()
+	model.train()
 
 	# initialize the SHAP explainer using a subset of data (assuming data from loader can fit into memory)
 	background_data = next(iter(loader))[0][:100].to(device)  # use the first 100 examples to estimate background distribution
@@ -91,28 +91,26 @@ def evaluate_model_with_shap(model, loader, device='cpu'):
 	total_mse = 0
 	num_samples = 0
 
-	with torch.no_grad():
+	# iterate through the evaluation dataset
+	for data, target in tqdm.tqdm(loader):
 		
-		# iterate through the evaluation dataset
-		for data, target in tqdm.tqdm(loader):
-			
-			# move the data and target to the right device
-			data, target = data.to(device), target.to(device)
-			predicted_tensor = model(data)
+		# move the data and target to the right device
+		data, target = data.to(device), target.to(device)
+		predicted_tensor = model(data)
 
-			# calculate the mean squared error
-			mse = torch.mean((predicted_tensor - target) ** 2)
-			total_mse += mse.item()
-			num_samples += 1
+		# calculate the mean squared error
+		mse = torch.mean((predicted_tensor - target) ** 2)
+		total_mse += mse.item()
+		num_samples += 1
 
-			data.requires_grad_(True)
+		data.requires_grad_(True)
 
-			# compute SHAP values for this batch
-			shap_values_batch = explainer.shap_values(data)
-			shap_values.append(shap_values_batch)
+		# compute SHAP values for this batch
+		shap_values_batch = explainer.shap_values(data)
+		shap_values.append(shap_values_batch)
 
-			# store predictions
-			predictions.append(predicted_tensor)
+		# store predictions
+		predictions.append(predicted_tensor)
 			
 	# normalize the mse by the number of samples
 	normalized_mse = total_mse / num_samples
