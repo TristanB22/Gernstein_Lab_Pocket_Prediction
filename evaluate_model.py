@@ -77,12 +77,12 @@ def load_history(history_path):
 # loader: the dataloader that we are going to use to evaluate the model
 # device: the computing device ('cpu' or 'cuda')
 def evaluate_model_with_shap(model, loader, device='cpu'):
-    
+
 	# set the model to evaluation mode
 	model.train()
 
 	# initialize the SHAP explainer using a subset of data (assuming data from loader can fit into memory)
-	background_data = next(iter(loader))[0][:100].to(device)  # use the first 100 examples to estimate background distribution
+	background_data = next(iter(loader))[0][:100].to(device) 
 	explainer = shap.DeepExplainer(model, background_data)
 
 	# arrays we are returning
@@ -106,8 +106,20 @@ def evaluate_model_with_shap(model, loader, device='cpu'):
 		data.requires_grad_(True)
 
 		# compute SHAP values for this batch
-		shap_values_batch = explainer.shap_values(mse)
-		shap_values.append(shap_values_batch)
+		try:
+			
+			# debug print
+			print(f"Data shape: {data.shape}")  
+			# debug print
+			print(f"MSE shape: {mse.shape}")    
+			
+			shap_values_batch = explainer.shap_values(data)
+			shap_values.append(shap_values_batch)
+		
+		except Exception as e:
+		
+			print(f"Error computing SHAP values: {e}")
+			continue
 
 		# store predictions
 		predictions.append(predicted_tensor)
