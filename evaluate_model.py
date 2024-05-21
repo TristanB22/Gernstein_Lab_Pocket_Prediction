@@ -194,7 +194,9 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 
 				# create the subset with and without the feature
 				subset_with_feature = list(subset) + [feature_index]
+				print(f"subset_with_feature: {subset_with_feature}")
 				subset_without_feature = list(subset)
+				print(f"subset_without_feature: {subset_without_feature}")
 
 				# get the string versions of each of the subsets and see if they exist in the dp table
 				subset_with_feature_str = str(sorted(subset_with_feature))
@@ -214,6 +216,8 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 
 					# get the features that are masked
 					masked_features = [t_val for t_val in range(len(feature_indices)) not in subset_with_feature]
+
+					print(f"masked_features: {masked_features}")
 
 					# get the mse across the entire dataset
 					for data, target in tqdm.tqdm(loader):
