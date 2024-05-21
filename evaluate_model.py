@@ -34,7 +34,7 @@ MODEL_PATH = "./Trained_Models/UNet_1.pth"
 
 # path to all of the molecules training data
 # MOLECULES_PATH = "refined-set"
-MOLECULES_PATH = "/home/tjb73/palmer_scratch/refined-set"
+MOLECULES_PATH = "/home/tjb73/palmer_scratch/"
 
 # the name of the protein that we are evaluating against
 PDB = "3qqs"
