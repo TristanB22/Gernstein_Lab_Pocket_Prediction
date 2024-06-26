@@ -289,7 +289,7 @@ def evaluate_model_with_shap(model, loader, mask_method='mean', device='cpu'):
 				weight = (np.math.factorial(len(subset)) * np.math.factorial(num_features - len(subset) - 1)) / np.math.factorial(num_features)
 
 				# get the shap contribution and add it to the shap array
-				contribution = w_feat_delta - wo_feat_delta
+				contribution = wo_feat_delta - w_feat_delta
 				shap_val_arr[feature_index] += weight * contribution
 
 	# return the normalized mse for the all features case along with the shap values for each feature
