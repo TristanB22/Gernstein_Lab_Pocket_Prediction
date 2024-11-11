@@ -12,6 +12,9 @@ refined-set/
 refset_upload.zip
 attn_pocket_pred_out.txt
 
+# slurm rum files
+slurm*
+
 # Byte-compile / optimized / DLL files
 __pycache__/
 *.py[cod]
