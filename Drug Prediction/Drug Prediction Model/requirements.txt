@@ -1,0 +1,10 @@
+python-dotenv
+matplotlib
+tqdm
+networkx
+rdkit
+rdkit-pypi
+torch 
+torchvision
+torchaudio
+torch-geometric

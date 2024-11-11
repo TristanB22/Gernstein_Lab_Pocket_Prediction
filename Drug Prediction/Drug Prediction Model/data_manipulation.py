@@ -2,6 +2,7 @@
 # we house all of the helper functions in a class called Utilities to keep the code organized
 
 import os
+import csv
 import time
 import torch
 import numpy as np
@@ -26,27 +27,6 @@ from dotenv import load_dotenv
 # load the environment variables
 load_dotenv()
 
-    
-	
-class ProteinDoping(Dataset):
-
-	'''
-	This class is used to create the dataset that we are going to use to train the model. It is a subclass of the PyTorch
-	Dataset class. The 
-	'''
-
-	def __init__(self, filepaths):
-		self.filepaths = filepaths
-
-	def __len__(self):
-		return len(self.filepaths)
-
-	def __getitem__(self, idx):
-		path = self.filepaths[idx].strip()
-		features, target = numpy_open_files_select_molecule_path(path)
-		return features, target
-
-
 
 class DrugDataLoader:
 
@@ -55,7 +35,7 @@ class DrugDataLoader:
 	of the model. It is used to instantiate the dataset that is going to be used to train the model and shuffle the dataset when necessary.
 	'''
 
-	def __init__(self, filename, mol_paths: list[str] = None, batch_size=32, load_percentage=0.3):
+	def __init__(self, mol_paths: list[str] = None, batch_size=32, load_percentage=0.3):
 
 		'''
 		This function is used to initialize the data loader object. It stores the information such as the paths to the files with the 
@@ -70,7 +50,7 @@ class DrugDataLoader:
 		if mol_paths is None:
 
 			# just load in all of the molecules (this could blow out the memory)
-			data_path = os.getenv("TRAINING_DATA_PATH")
+			data_path = os.getenv("TRAIN_NAMES_FILE")
 			
 			with open(data_path, "r") as f:
 				self.mol_paths = f.readlines()
@@ -99,19 +79,28 @@ class DrugDataLoader:
 	# function for generating the data
 	def generator(self):
 
-		# open the file containing the paths to the data files
-		with open(self.filename, 'r') as file:
-			reader = csv.reader(file)
-			batch = []
-			for row in reader:
-				batch.append(row)
-				if len(batch) == self.batch_size:
-					yield batch
-					batch = []
-			if batch:
-				yield batch
+		# batch to return
+		batch = []
 
-	
+		# iterate through the molecules that we loaded in and process the data
+		for mol in self.loader_data:
+			
+			# get the features and the target
+			features = mol[0]
+			target = mol[1]
+
+			# append the features and the target to the batch
+			batch.append((features, target))
+
+			# check if the batch is full
+			if len(batch) == self.batch_size:
+				yield batch
+				batch = []
+
+		# check if there are any remaining instances
+		if batch:
+			yield batch
+
 
 	def load_new_data(self) -> None:
 		
@@ -134,21 +123,21 @@ class DrugDataLoader:
 			raise ValueError("The number of training instances is zero. Please check the load percentage and the number of instances in the data file.")
 		
 		# load in the training data
-		self.train_data = []	
+		self.loader_data = []	
 
 		# get the random indices for the data
 		random_indices = np.random.choice(len(self.mol_paths), num_train_instances, replace=False)
 		selected_train_molecule_paths = [self.mol_paths[i] for i in random_indices]
 
 		# create the iterator depending on the verbosity
-		if os.getenv("VERBOSITY_LEVEL") >= 1:
-			train_data_iterator = tqdm(selected_train_molecule_paths, desc="Loading training data...")
+		if int(os.getenv("VERBOSITY_LEVEL")) >= 1:
+			loader_data_iterator = tqdm(selected_train_molecule_paths, desc="Loading training data...")
 		else:
-			train_data_iterator = selected_train_molecule_paths
+			loader_data_iterator = selected_train_molecule_paths
 
 		# iterate through the training data and load in the data
-		for t_path in train_data_iterator:
-			self.train_data.append(self.__read_drug_data_file__(t_path))
+		for t_path in loader_data_iterator:
+			self.loader_data.append(self.__read_drug_data_file__(t_path))
 
 		
 
@@ -165,11 +154,12 @@ class DrugDataLoader:
 		Returns:
 			tensor_set: a set of tensors that we loaded in from the data file
 		'''
+
+		data_path = data_path.strip()
 		
 		# load in the data
-		data = pd.read_csv(data_path)
+		print(f"Loading data from {data_path}...")
 		
-		return data
 
 
 
@@ -177,13 +167,15 @@ class DrugDataLoader:
 if __name__ == "__main__":
 	
 	# get the verbosity level
-	verbosity_level = os.getenv("VERBOSITY_LEVEL")
-	
+	verbosity_level = int(os.getenv("VERBOSITY_LEVEL"))
+
 	if verbosity_level >= 1:
 		print("Starting utilities test script...")
+
+	# load the data
+	loader = DrugDataLoader()
 	
-	raise NotImplementedError("The utilities testing script has not been implemented yet.")
-	
+
 	# print the data
 	print("The data has been loaded successfully!")
 	
