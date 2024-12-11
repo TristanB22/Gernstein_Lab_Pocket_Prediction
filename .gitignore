@@ -143,3 +143,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Ignore Data Analysis directory
+Drug Prediction/Data Analysis/
+
+# Ignore Drug Prediction Model directory
+Drug Prediction/Drug Prediction Model/
+
