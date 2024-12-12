@@ -7,6 +7,11 @@ This script initializes the generator and discriminator models, loads data,
 configures logging, and manages the training loop including pretraining and
 reinforcement learning (RL) phases. It also handles metrics computation,
 logging, and visualization of generated molecules.
+
+Run:
+    python3 main.py --dataset moses
+or
+    python3 main.py --dataset pdbbind
 '''
 
 import os
@@ -15,6 +20,7 @@ import time
 import traceback
 import logging
 import torch
+import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
@@ -24,13 +30,15 @@ from tqdm import tqdm
 import numpy as np
 from collections import Counter, defaultdict
 import random
+import argparse
 
 from config import (DEVICE, TEMPERATURE, SEED, TRAIN_ON_SMALL_DATASET, SMALL_DAT_NUM_MOLS,
                     LOGGING_ENABLED, run_dir, loss_file_path, gen_disc_loss_path, 
                     EPOCHS, PRETRAIN_EPOCHS, RL_BATCH_SIZE, REINFORCEMENT_LEARNING_FACTOR, 
                     ENABLE_REINFORCEMENT_LEARNING, PRINT_INFO, LOAD_MODEL, FLAGS, 
                     VALIDITY_REWARD, FOOL_SCALING, UNIQUE_MOL_SCALER, SIZE_SCALER,
-                    WRITE_MOLECULE_IMAGES, VISUALIZE_EVERY_INSTANCE, VISUALIZE_MOLECULE_EVERY_EPOCH)
+                    WRITE_MOLECULE_IMAGES, VISUALIZE_EVERY_INSTANCE, VISUALIZE_MOLECULE_EVERY_EPOCH, LOG_RL_LOSSES,
+                    PDBBIND_LIGAND_SDF_DIR, moses_csv_path)
 
 from data.process import (MOSES_load_moses_data, data_to_molecule, process_molecules_multiprocessing, keep_largest_component_pyg)
 from data.constants import allowed_atom_types
@@ -52,8 +60,6 @@ import scipy.stats as stats
 from torch_geometric.loader import DataLoader
 
 
-# additional setup done in config.py already
-
 def initialize_models(valid_data):
     '''
     Initialize the generator, discriminator, and baseline models.
@@ -73,6 +79,7 @@ def initialize_models(valid_data):
     NUM_NODE_FEATURES = 17
     assert valid_data[0].x.size(1) == 17, "Expected 17 node features."
     
+    # determine number of edge features
     if valid_data[0].edge_attr.size(0) > 0:
         NUM_EDGE_FEATURES = valid_data[0].edge_attr.size(1)
     else:
@@ -82,11 +89,11 @@ def initialize_models(valid_data):
     device = DEVICE
     logging.info(f"Using device: {device}")
     
+    # initialize baseline model
     baseline = Baseline(alpha=0.9)
-    
     from data.utils import MolEncoder
     
-    # initialize generator
+    # initialize generator model
     generator = Generator(
         noise_dim=NOISE_DIM,
         hidden_dim=HIDDEN_DIM,
@@ -96,7 +103,7 @@ def initialize_models(valid_data):
         num_layers=NUM_LAYERS
     ).to(device)
     
-    # initialize discriminator
+    # initialize discriminator model
     discriminator = Discriminator(
         input_dim=NUM_NODE_FEATURES,
         hidden_dim=HIDDEN_DIM,
@@ -106,6 +113,7 @@ def initialize_models(valid_data):
     logging.info("Models initialized.")
     return generator, discriminator, baseline, device, NUM_NODE_FEATURES, NUM_EDGE_FEATURES, \
            128, EPOCHS, LEARNING_RATE
+
 
 def load_existing_models(generator, discriminator, load_best, load_checkpoint_epoch=None):
     '''
@@ -132,6 +140,7 @@ def load_existing_models(generator, discriminator, load_best, load_checkpoint_ep
             logging.warning("Checkpoint models not found.")
     else:
         logging.info("No model loading requested.")
+
 
 def compute_diversity(smiles_list):
     '''
@@ -166,6 +175,7 @@ def compute_diversity(smiles_list):
         return 1.0
     return 1 - np.mean(sims)
 
+
 def compute_rl_metrics(rl_losses):
     '''
     Compute average reinforcement learning metrics from loss data.
@@ -177,6 +187,7 @@ def compute_rl_metrics(rl_losses):
         return {}
     avg_rl_metrics = {k: sum(d[k] for d in rl_losses) / len(rl_losses) for k in rl_losses[0].keys()}
     return avg_rl_metrics
+
 
 def update_metrics(metrics, atom_count, validity_score, fool_reward, unique_mol_penalty,
                    disconn_pen, kldiv_pen, satom_pen, dup_pen, edge_pen, invalid_edge_penalty,
@@ -221,6 +232,7 @@ def update_metrics(metrics, atom_count, validity_score, fool_reward, unique_mol_
         atom_metrics['similarity_rewards'].append(similarity_reward)
         atom_metrics['total_rl_rewards'].append(reward_total)
 
+
 def compute_rewards(generated_molecules, z_scores):
     '''
     Compute the rewards and penalties for generated molecules based on various criteria.
@@ -242,11 +254,10 @@ def compute_rewards(generated_molecules, z_scores):
     penalties = []
     validity_scores = []
     unique_mol_penalties = []
-    motif_rewards = []
-    similarity_rewards = []
+    motif_rewards_list = []
+    similarity_rewards_list = []
 
-    # compute all rewards and penalties per molecule
-    train_fps = []  # if needed for similarity
+    train_fps = []
     for mol, z_score in zip(generated_molecules, z_scores):
         reward_total = 0.0
         reward_dict = {}
@@ -304,9 +315,9 @@ def compute_rewards(generated_molecules, z_scores):
 
         # compute duplicate molecule penalty
         if FLAGS['ENABLE_DUPLICATE_MOLECULE_PENALTY']:
-            dp = compute_duplicate_penalty(mol)
-            penalty_dict['duplicate_penalty'] = dp
-            reward_total -= dp
+            dpp = compute_duplicate_penalty(mol)
+            penalty_dict['duplicate_penalty'] = dpp
+            reward_total -= dpp
         else:
             penalty_dict['duplicate_penalty'] = 0.0
 
@@ -366,34 +377,59 @@ def compute_rewards(generated_molecules, z_scores):
         else:
             reward_dict['similarity_reward'] = 0.0
 
+        # append rewards and penalties to respective lists
         rewards_total.append(reward_total)
         rewards.append(reward_dict)
         penalties.append(penalty_dict)
         validity_scores.append(validity_score)
         unique_mol_penalties.append(penalty_dict['unique_mol_penalty'])
-        motif_rewards.append(reward_dict.get('motif_reward', 0.0))
-        similarity_rewards.append(reward_dict.get('similarity_reward', 0.0))
+        motif_rewards_list.append(reward_dict.get('motif_reward', 0.0))
+        similarity_rewards_list.append(reward_dict.get('similarity_reward', 0.0))
 
-    return rewards_total, rewards, penalties, validity_scores, unique_mol_penalties, motif_rewards, similarity_rewards
+    return rewards_total, rewards, penalties, validity_scores, unique_mol_penalties, motif_rewards_list, similarity_rewards_list
 
 
-
-# MAIN EXECUTION STARTS HERE
 if __name__ == "__main__":
-    from data.process import MOSES_load_moses_data
-    from config import (moses_csv_path, refined_set_dir, TRAIN_ON_SMALL_DATASET, SMALL_DAT_NUM_MOLS, 
-                       LOGGING_ENABLED, run_dir, loss_file_path, gen_disc_loss_path, 
-                       RL_BATCH_SIZE, ENABLE_REINFORCEMENT_LEARNING, PRETRAIN_EPOCHS, 
-                       WRITE_MOLECULE_IMAGES, VISUALIZE_MOLECULE_EVERY_EPOCH, PRINT_INFO, 
-                       EPOCHS, FLAGS, LOAD_MODEL, GENERATOR_CHECKPOINT_PATH)
-
-    # ensure moses_csv_path is defined in the config or add a line:
-    moses_csv_path = "./test.txt"
+    '''
+    Entry point for the training script.
     
-    # load and process valid data
-    valid_data = MOSES_load_moses_data(moses_csv_path)
-    if len(valid_data) == 0:
-        raise ValueError("No valid molecules processed.")
+    Parses command-line arguments, loads the appropriate dataset, initializes models,
+    and starts the training loop with pretraining and reinforcement learning phases.
+    Handles logging, metrics computation, and visualization based on configuration flags.
+    '''
+    # add argument parsing for dataset choice
+    parser = argparse.ArgumentParser(description="Train a molecular generative model.")
+    parser.add_argument("--dataset", choices=["pdbbind", "moses"], required=True,
+                        help="Specify which dataset to use: 'pdbbind' or 'moses'")
+    args = parser.parse_args()
+    
+    from data.process import MOSES_load_moses_data
+    from config import (TRAIN_ON_SMALL_DATASET, SMALL_DAT_NUM_MOLS, LOGGING_ENABLED, run_dir,
+                        loss_file_path, gen_disc_loss_path, RL_BATCH_SIZE, ENABLE_REINFORCEMENT_LEARNING,
+                        PRETRAIN_EPOCHS, WRITE_MOLECULE_IMAGES, VISUALIZE_MOLECULE_EVERY_EPOCH,
+                        PRINT_INFO, EPOCHS, FLAGS, LOAD_MODEL, GENERATOR_CHECKPOINT_PATH,
+                        moses_csv_path, PDBBIND_LIGAND_SDF_DIR)
+
+    # load data depending on the dataset choice
+    if args.dataset == "moses":
+        # load MOSES dataset
+        valid_data = MOSES_load_moses_data(moses_csv_path)
+        if len(valid_data) == 0:
+            raise ValueError("No valid molecules processed from MOSES dataset.")
+    else:
+        # load PDBbind dataset
+        max_files = SMALL_DAT_NUM_MOLS if TRAIN_ON_SMALL_DATASET else None
+        valid_data = process_molecules_multiprocessing(PDBBIND_LIGAND_SDF_DIR, max_files=max_files)
+        # filter valid data
+        filtered_data = []
+        for idx, d in enumerate(valid_data):
+            if hasattr(d, 'x') and d.x is not None and d.x.size(0) > 0 \
+               and hasattr(d, 'edge_index') and d.edge_index is not None \
+               and hasattr(d, 'edge_attr') and d.edge_attr is not None:
+                filtered_data.append(d)
+        valid_data = filtered_data
+        if len(valid_data) == 0:
+            raise ValueError("No valid molecules processed from PDBbind dataset.")
 
     # initialize data loader
     loader = DataLoader(valid_data, batch_size=128, shuffle=True, num_workers=0, pin_memory=True)
@@ -411,8 +447,9 @@ if __name__ == "__main__":
         atom_counter.update(symbols)
     atom_type_distribution = dict(atom_counter)
     
-    # log initial metrics
+    # log initial metrics if logging is enabled
     if LOGGING_ENABLED:
+        logging.info(f"Using dataset: {args.dataset}")
         logging.info(f"Avg edge density: {average_edge_density}")
         logging.info(f"Atom type distribution: {atom_type_distribution}")
 
@@ -429,12 +466,11 @@ if __name__ == "__main__":
     optimizer_G = optim.Adam(generator.parameters(), lr=LEARNING_RATE)
     criterion = nn.BCEWithLogitsLoss()
 
+    # initialize training flags and metrics
     train_discriminator = True
     best_total_loss = float('inf')
     rl_total_loss = []
     per_atom_metrics_json_path = os.path.join(run_dir, "per_atom_metrics.json")
-    
-    # initialize per-atom metrics file if not present
     if not os.path.exists(per_atom_metrics_json_path):
         with open(per_atom_metrics_json_path, "w") as f:
             json.dump([], f, indent=4)
@@ -520,16 +556,20 @@ if __name__ == "__main__":
                 if train_discriminator:
                     discriminator.zero_grad()
                     with autocast():
+                        # compute discriminator output on real data
                         outputs_real = discriminator(real_data.x, real_data.edge_index, real_data.batch)
                         loss_real = criterion(outputs_real, real_labels)
 
+                        # generate fake data using the generator
                         with torch.no_grad():
                             data_list, atom_type_log_prob, hybridization_log_prob = generator(batch_size)
 
+                        # create a batch from generated data and compute discriminator output
                         fake_batch = Batch.from_data_list(data_list).to(device)
                         outputs_fake = discriminator(fake_batch.x, fake_batch.edge_index, fake_batch.batch)
                         loss_fake = criterion(outputs_fake, fake_labels)
 
+                        # compute total discriminator loss
                         loss_D = loss_real + loss_fake
 
                     # backpropagate if loss is significant
@@ -547,9 +587,12 @@ if __name__ == "__main__":
                 # train generator
                 generator.zero_grad()
                 with autocast():
+                    # generate fake data and compute discriminator output
                     data_list, atom_type_log_prob, hybridization_log_prob = generator(batch_size)
                     fake_batch = Batch.from_data_list(data_list).to(device)
                     outputs = discriminator(fake_batch.x, fake_batch.edge_index, fake_batch.batch)
+                    
+                    # compute generator loss based on discriminator's output
                     loss_G_adv = criterion(outputs, real_labels)
                     loss_G = loss_G_adv
 
@@ -558,6 +601,7 @@ if __name__ == "__main__":
                     logging.warning(f"Encountered NaN or Inf in generator loss. Skipping backward pass.")
                     continue
 
+                # backpropagate generator loss
                 scaler.scale(loss_G).backward()
                 clip_grad_norm_(generator.parameters(), max_norm=1.0)
                 scaler.step(optimizer_G)
@@ -581,9 +625,13 @@ if __name__ == "__main__":
             for _ in tqdm(range(REINFORCEMENT_LEARNING_FACTOR), desc=f"RL pass epoch {epoch+1}/{EPOCHS}"):
                 generator.zero_grad()
                 generated_data_list, atom_type_log_prob, hybridization_log_prob = generator(RL_BATCH_SIZE)
+                
+                # check if generator returned data
                 if not isinstance(generated_data_list, list) or len(generated_data_list) == 0:
                     logging.warning("Generator returned an empty data list.")
                     continue
+                
+                # create a batch from generated data
                 fake_batch = Batch.from_data_list(generated_data_list).to(device)
                 for mol_data in fake_batch.to_data_list():
                     mol_obj, invalid_edge_count = data_to_molecule(mol_data, allow_invalid=True)
@@ -591,6 +639,7 @@ if __name__ == "__main__":
                     smiles = Chem.MolToSmiles(mol_obj) if mol_obj is not None else None
                     epoch_valid_smiles.append(smiles)
 
+                # compute discriminator scores and probabilities
                 with torch.no_grad():
                     discriminator_scores = discriminator(fake_batch.x, fake_batch.edge_index, fake_batch.batch)
                     probabilities = torch.sigmoid(discriminator_scores).cpu().numpy()
@@ -602,6 +651,7 @@ if __name__ == "__main__":
                 z_scores = stats.norm.ppf(percentiles / 100)
                 z_scores = np.clip(z_scores, -3, 3)
 
+                # collect generated molecules
                 generated_molecules = []
                 for data_mol in fake_batch.to_data_list():
                     mol, _ = data_to_molecule(data_mol, allow_invalid=True)
@@ -610,6 +660,7 @@ if __name__ == "__main__":
                 # compute rewards and penalties
                 rewards_total, rewards, penalties, validity_scores, unique_mol_penalties, motif_rewards_vals, similarity_rewards_vals = compute_rewards(generated_molecules, z_scores)
 
+                # compute advantages for policy gradient
                 mean_reward = np.mean(rewards_total)
                 advantages = torch.tensor(rewards_total, dtype=torch.float, device=atom_type_log_prob.device) - torch.tensor(mean_reward, dtype=torch.float, device=atom_type_log_prob.device)
                 if advantages.shape[0] != atom_type_log_prob.shape[0]:
@@ -620,6 +671,7 @@ if __name__ == "__main__":
                 rl_losses_tensor = - (atom_type_log_prob + hybridization_log_prob) * advantages
                 rl_loss = rl_losses_tensor.mean()
 
+                # backpropagate RL loss
                 rl_loss.backward()
                 clip_grad_norm_(generator.parameters(), max_norm=1.0)
                 optimizer_G.step()
@@ -870,6 +922,7 @@ if __name__ == "__main__":
                 'atom_counts': {}
             }
 
+            # compute average metrics for each atom count
             for atom_count, losses in metrics['per_atom_metrics'].items():
                 if not losses['total_rl_rewards']:
                     continue
@@ -894,6 +947,7 @@ if __name__ == "__main__":
                     f"Avg Total RL Reward: {avg_metrics['total_rl_rewards']:.4f}"
                 )
 
+            # append epoch metrics to JSON data
             data_json.append(epoch_metrics_json)
             try:
                 with open(per_atom_metrics_json_path, "w") as f:

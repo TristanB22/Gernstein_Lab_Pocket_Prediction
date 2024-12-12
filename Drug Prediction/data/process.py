@@ -348,7 +348,7 @@ def MOSES_smiles_to_data(smiles):
     # use the molencoder from utils
     from .utils import MolEncoder
     
-    from_networkx = from_networkx
+#     from_networkx = from_networkx
 
     # get the molecule from the SMILES string
     mol = Chem.MolFromSmiles(smiles)

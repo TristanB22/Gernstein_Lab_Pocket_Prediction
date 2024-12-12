@@ -28,8 +28,8 @@ random.seed(SEED)
 TEMPERATURE = 1.0
 PRINT_ERROR = True
 PRINT_INFO = True
-TRAIN_ON_SMALL_DATASET = False
-SMALL_DAT_NUM_MOLS = 1000
+TRAIN_ON_SMALL_DATASET = True
+SMALL_DAT_NUM_MOLS = 10
 VISUALIZE_MOLECULE_EVERY_EPOCH = True
 VISUALIZE_EVERY_INSTANCE = False
 WRITE_MOLECULE_IMAGES = True
@@ -51,6 +51,7 @@ RL_SCALING_FACTOR = 10.0
 # directories and paths to the most important files
 GENERATOR_CHECKPOINT_PATH = './generator_latest_ckpt.pth'
 PDBBIND_LIGAND_SDF_DIR = "/home/tjb73/project/Pocket Prediction/refined-set"
+moses_csv_path = "./test.txt"
 
 # how many molecules we should generate in the testing phase
 NUM_MOLECULES_TO_GENERATE = 10000
