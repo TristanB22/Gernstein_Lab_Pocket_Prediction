@@ -29,7 +29,7 @@ echo "Using Conda environment: $(conda info --envs | grep '*' | awk '{print $1}'
 echo "======================================="
 
 
-python main.py --dataset moses
+python main.py --dataset pdbbind
 
 
 echo "======================================="

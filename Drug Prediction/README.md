@@ -86,6 +86,8 @@ conda activate test_run_env_583_final
 
 If the environment already exists, it will be updated accordingly. Ensure all dependencies are correctly installed. Alternatively, you can just run the submit script and it will automatically be done.
 
+The data for pdbbind after cleaning can be found [here](https://drive.google.com/drive/folders/1MCen_OiP9Ey2ClrV8CYHIERdZ205X9Ui?usp=sharing).
+
 
 
 ### Data Preparation
